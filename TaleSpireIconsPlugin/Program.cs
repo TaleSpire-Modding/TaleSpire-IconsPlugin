@@ -19,7 +19,7 @@ namespace LordAshes
         // Plugin info
         public const string Name = "Icons Plug-In";
         public const string Guid = "org.lordashes.plugins.icons";
-        public const string Version = "1.0.0.0";
+        public const string Version = "1.0.2.0";
 
         // Configuration
         private ConfigEntry<KeyboardShortcut> triggerKey { get; set; }
@@ -64,6 +64,9 @@ namespace LordAshes
             {
                 if (s.ToString().Contains("+Active")) {  boardActive = true;  }  else { boardActive = false;  }
             };
+
+            // Display plugin on the main TaleSpire page
+            StateDetection.Initialize(this.GetType());
         }
 
         /// <summary>
@@ -167,7 +170,7 @@ namespace LordAshes
         {
             if (LocalClient.SelectedCreatureId != null)
             {
-                string[] icons = System.IO.Directory.EnumerateFiles(dir + "Images/Icons", "*.PNG").ToArray();
+                string[] icons = System.IO.Directory.EnumerateFiles(dir + "Images/Icons/"+IconsPlugin.Guid, "*.PNG").ToArray();
                 Form menu = new Form();
                 menu.FormBorderStyle = FormBorderStyle.None;
                 menu.ControlBox = false;
@@ -332,7 +335,7 @@ namespace LordAshes
                     Image img = icon[i].AddComponent<Image>();
                     img.transform.SetParent(canvas.transform);
                     // Load icon image
-                    icon[i].GetComponent<Image>().sprite = Sprite.Create(LoadTexture(dir+"Images/Icons/"+iconFiles[i]+".PNG"), new Rect(0, 0, 64, 64), new Vector2(0.5f, 0.5f), 100);
+                    icon[i].GetComponent<Image>().sprite = Sprite.Create(LoadTexture(dir+"Images/Icons/"+IconsPlugin.Guid+"/"+iconFiles[i]+".PNG"), new Rect(0, 0, 64, 64), new Vector2(0.5f, 0.5f), 100);
                     // Set scale
                     icon[i].GetComponent<Image>().transform.localScale = new Vector3(0.001f, 0.001f, 0.001f);
                     icon[i].SetActive(true);
