@@ -8,9 +8,13 @@ Demo: https://youtu.be/0XN0IkVIXL4
 ## Change Log
 
 1.0.3: Fixed issue with moving the icons to a sub-folder
+
 1.0.2: Plugin now appears on the TaleSpire main page
+
 1.0.2: Moved icons to sub-folder to not conflict with Radial Menu icons
+
 1.0.1: Fixed dependency requirement
+
 1.0.0: Initial release
 
 ## Install
