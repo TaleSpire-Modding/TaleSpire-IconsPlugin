@@ -19,7 +19,7 @@ namespace LordAshes
         // Plugin info
         public const string Name = "Icons Plug-In";
         public const string Guid = "org.lordashes.plugins.icons";
-        public const string Version = "1.0.3.0";
+        public const string Version = "1.1.0.0";
 
         // Configuration
         private ConfigEntry<KeyboardShortcut> triggerKey { get; set; }
@@ -261,36 +261,44 @@ namespace LordAshes
             // Don't sync icon when in stealth mode
             if (asset.Creature.IsExplicitlyHidden) { return; }
 
+            Vector3 scale = new Vector3(asset.Creature.Scale / 1000, asset.Creature.Scale / 1000, asset.Creature.Scale / 1000);
+
             // Sync icons with base
             if ((icon0 != null) && (icon1 == null) && (icon2 == null))
             {
-                offset0 = Quaternion.AngleAxis(Camera.main.transform.eulerAngles.y, Vector3.up) * new Vector3(0, 0.05f, -0.45f);
+                offset0 = Quaternion.AngleAxis(Camera.main.transform.eulerAngles.y, Vector3.up) * new Vector3(0, 0.05f, -0.45f) * asset.Creature.Scale;
                 icon0.transform.position = offset0 + asset.BaseLoader.LoadedAsset.transform.position;
                 icon0.transform.eulerAngles = new Vector3(20, Camera.main.transform.eulerAngles.y, 0);
+                icon0.transform.localScale = scale;
                 icon0.SetActive(!asset.Creature.IsExplicitlyHidden);
             }
             else if ((icon0 != null) && (icon1 != null) && (icon2 == null))
             {
-                offset0 = Quaternion.AngleAxis(Camera.main.transform.eulerAngles.y, Vector3.up) * new Vector3(0.125f, 0.05f, -0.425f);
-                offset1 = Quaternion.AngleAxis(Camera.main.transform.eulerAngles.y, Vector3.up) * new Vector3(-0.125f, 0.05f, -0.425f);
+                offset0 = Quaternion.AngleAxis(Camera.main.transform.eulerAngles.y, Vector3.up) * new Vector3(0.125f, 0.05f, -0.425f) * asset.Creature.Scale;
+                offset1 = Quaternion.AngleAxis(Camera.main.transform.eulerAngles.y, Vector3.up) * new Vector3(-0.125f, 0.05f, -0.425f) * asset.Creature.Scale;
                 icon0.transform.position = offset0 + asset.BaseLoader.LoadedAsset.transform.position;
                 icon0.transform.eulerAngles = new Vector3(20, Camera.main.transform.eulerAngles.y - 20, 0);
                 icon1.transform.position = offset1 + asset.BaseLoader.LoadedAsset.transform.position;
                 icon1.transform.eulerAngles = new Vector3(20, Camera.main.transform.eulerAngles.y + 20, 0);
+                icon0.transform.localScale = scale;
+                icon1.transform.localScale = scale;
                 icon0.SetActive(!asset.Creature.IsExplicitlyHidden);
                 icon1.SetActive(!asset.Creature.IsExplicitlyHidden);
             }
             else
             {
-                offset0 = Quaternion.AngleAxis(Camera.main.transform.eulerAngles.y, Vector3.up) * new Vector3(+0.125f, +0.05f, -0.425f);
-                offset1 = Quaternion.AngleAxis(Camera.main.transform.eulerAngles.y, Vector3.up) * new Vector3(0, 0.05f, -0.45f);
-                offset2 = Quaternion.AngleAxis(Camera.main.transform.eulerAngles.y, Vector3.up) * new Vector3(-0.125f, +0.05f, -0.425f);
+                offset0 = Quaternion.AngleAxis(Camera.main.transform.eulerAngles.y, Vector3.up) * new Vector3(+0.125f, +0.05f, -0.425f) * asset.Creature.Scale;
+                offset1 = Quaternion.AngleAxis(Camera.main.transform.eulerAngles.y, Vector3.up) * new Vector3(0, 0.05f, -0.45f) * asset.Creature.Scale;
+                offset2 = Quaternion.AngleAxis(Camera.main.transform.eulerAngles.y, Vector3.up) * new Vector3(-0.125f, +0.05f, -0.425f) * asset.Creature.Scale;
                 icon0.transform.position = offset0 + asset.BaseLoader.LoadedAsset.transform.position;
                 icon0.transform.eulerAngles = new Vector3(20, Camera.main.transform.eulerAngles.y - 20, 0);
                 icon1.transform.position = offset1 + asset.BaseLoader.LoadedAsset.transform.position;
                 icon1.transform.eulerAngles = new Vector3(20, Camera.main.transform.eulerAngles.y, 0);
                 icon2.transform.position = offset2 + asset.BaseLoader.LoadedAsset.transform.position;
                 icon2.transform.eulerAngles = new Vector3(20, Camera.main.transform.eulerAngles.y + 20, 0);
+                icon0.transform.localScale = scale;
+                icon1.transform.localScale = scale;
+                icon2.transform.localScale = scale;
                 icon0.SetActive(!asset.Creature.IsExplicitlyHidden);
                 icon1.SetActive(!asset.Creature.IsExplicitlyHidden);
                 icon2.SetActive(!asset.Creature.IsExplicitlyHidden);
