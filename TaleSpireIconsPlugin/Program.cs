@@ -14,12 +14,13 @@ namespace LordAshes
 {
     [BepInPlugin(Guid, Name, Version)]
     [BepInDependency(LordAshes.StatMessaging.Guid)]
+    [BepInDependency(RadialUI.RadialUIPlugin.Guid)]
     public partial class IconsPlugin : BaseUnityPlugin
     {
         // Plugin info
         public const string Name = "Icons Plug-In";
         public const string Guid = "org.lordashes.plugins.icons";
-        public const string Version = "1.1.0.0";
+        public const string Version = "1.2.0.0";
 
         // Configuration
         private ConfigEntry<KeyboardShortcut> triggerKey { get; set; }
@@ -65,6 +66,24 @@ namespace LordAshes
                 if (s.ToString().Contains("+Active")) {  boardActive = true;  }  else { boardActive = false;  }
             };
 
+            // Add Info menu selection to main character menu
+            RadialUI.RadialSubmenu.EnsureMainMenuItem(  RadialUI.RadialUIPlugin.Guid + ".Info",
+                                                        RadialUI.RadialSubmenu.MenuType.character,
+                                                        "Info",
+                                                        RadialUI.RadialSubmenu.GetIconFromFile(dir+"Images/Icons/Info.png")
+                                                     );
+
+            // Add Icons sub menu item
+            RadialUI.RadialSubmenu.CreateSubMenuItem(   RadialUI.RadialUIPlugin.Guid+".Info",
+                                                        "Icons",
+                                                        RadialUI.RadialSubmenu.GetIconFromFile(dir + "Images/Icons/Icons.png"),
+                                                        SetRequest,
+                                                        false
+                                                    );
+
+            // Subscribe to Stat Messages
+            StatMessaging.Subscribe(IconsPlugin.Guid, HandleRequest);
+
             // Display plugin on the main TaleSpire page
             StateDetection.Initialize(this.GetType());
         }
@@ -79,13 +98,10 @@ namespace LordAshes
             {
                 CreatureBoardAsset asset = null;
 
-                // Check for Stat Messaging messages
-                StatMessaging.Check(HandleRequest);
-
                 // Check for states menu trigger
                 if (triggerKey.Value.IsUp())
                 {
-                    SetRequest();
+                    SetRequest(LocalClient.SelectedCreatureId);
                 }
 
                 // Sync icons for selected mini
@@ -125,6 +141,10 @@ namespace LordAshes
             }
         }
 
+        /// <summary>
+        /// Method used to process Stat Messages
+        /// </summary>
+        /// <param name="changes">Change parameter with the Stat Message content information</param>
         public void HandleRequest(StatMessaging.Change[] changes)
         {
             foreach (StatMessaging.Change change in changes)
@@ -164,40 +184,78 @@ namespace LordAshes
         }
 
         /// <summary>
+        /// Callback method called from sub-menu selection
+        /// </summary>
+        /// <param name="cid">Creature Guid associated with radial menu asset</param>
+        /// <param name="menu">Menu Guid</param>
+        /// <param name="mmi">MapMenuItem associated with the menu</param>
+        private void SetRequest(CreatureGuid cid, string menu, MapMenuItem mmi)
+        {
+            // Create sub-menu
+            MapMenu mapMenu = MapMenuManager.OpenMenu(mmi, MapMenu.MenuType.SUBROOT);
+            // Populate sub-menu based on all items added by any plugins for the specific main menu entry
+            foreach (string iconFile in System.IO.Directory.EnumerateFiles(dir + "Images/Icons/" + IconsPlugin.Guid, "*.PNG"))
+            {
+                Texture2D tex = new Texture2D(64, 64);
+                tex.LoadImage(System.IO.File.ReadAllBytes(iconFile));
+                Sprite icon = Sprite.Create(Scale64To32(tex), new Rect(0, 0, 32, 32), new Vector2(0.5f, 0.5f));
+
+                mapMenu.AddItem(new MapMenu.ItemArgs()
+                {
+                    Action = (_mmi,_obj)=> { ToggleIcon(cid, iconFile); },
+                    Icon = icon,
+                    Title = System.IO.Path.GetFileNameWithoutExtension(iconFile),
+                    CloseMenuOnActivate = true
+                });
+            }
+        }
+
+        /// <summary>
+        /// Method for applying icon toggle from sub-menu
+        /// </summary>
+        /// <param name="cid"></param>
+        /// <param name="iconFile"></param>
+        private void ToggleIcon(CreatureGuid cid, string iconFile)
+        {
+            SyncIconList(cid, iconFile);
+        }
+
+        /// <summary>
         /// Method to write stats to the Creature Name
         /// </summary>
-        public void SetRequest()
+        public void SetRequest(CreatureGuid cid)
         {
-            if (LocalClient.SelectedCreatureId != null)
+            string[] icons = System.IO.Directory.EnumerateFiles(dir + "Images/Icons/" + IconsPlugin.Guid, "*.PNG").ToArray();
+            Form menu = new Form();
+            menu.SuspendLayout();
+            menu.FormBorderStyle = FormBorderStyle.None;
+            menu.ControlBox = false;
+            menu.MinimizeBox = false;
+            menu.MaximizeBox = false;
+            menu.ShowInTaskbar = false;
+            menu.AllowTransparency = true;
+            menu.TransparencyKey = System.Drawing.Color.CornflowerBlue;
+            menu.BackColor = System.Drawing.Color.CornflowerBlue;
+            menu.Width = 70 * icons.Length;
+            menu.Height = 100;
+            int offset = 0;
+            foreach (string icon in icons)
             {
-                string[] icons = System.IO.Directory.EnumerateFiles(dir + "Images/Icons/"+IconsPlugin.Guid, "*.PNG").ToArray();
-                Form menu = new Form();
-                menu.FormBorderStyle = FormBorderStyle.None;
-                menu.ControlBox = false;
-                menu.MinimizeBox = false;
-                menu.MaximizeBox = false;
-                menu.ShowInTaskbar = false;
-                menu.AllowTransparency = true;
-                menu.TransparencyKey = System.Drawing.Color.CornflowerBlue;
-                menu.BackColor = System.Drawing.Color.CornflowerBlue;
-                menu.Width = 70 * icons.Length;
-                menu.Height = 100;
-                int offset = 0;
-                foreach (string icon in icons)
-                {
-                    string iconFile = icon;
-                    PictureBox iconImage = new PictureBox();
-                    iconImage.SizeMode = PictureBoxSizeMode.AutoSize;
-                    iconImage.Load(icon);
-                    iconImage.Top = 5;
-                    iconImage.Left = offset;
-                    iconImage.Click += (s, e) => { menu.Close(); SyncIconList(LocalClient.SelectedCreatureId, iconFile); };
-                    menu.Controls.Add(iconImage);
-                    offset = offset + 70;
-                }
-                menu.StartPosition = FormStartPosition.CenterScreen;
-                menu.Show();
+                string iconFile = icon;
+                PictureBox iconImage = new PictureBox();
+                iconImage.SizeMode = PictureBoxSizeMode.AutoSize;
+                iconImage.Load(icon);
+                iconImage.Top = 5;
+                iconImage.Left = offset;
+                iconImage.Click += (s, e) => { menu.Close(); SyncIconList(cid, iconFile); };
+                menu.Controls.Add(iconImage);
+                offset = offset + 70;
             }
+            menu.ResumeLayout();
+            menu.StartPosition = FormStartPosition.CenterScreen;
+            menu.Show();
+            Debug.Log("Menu Focus...");
+            menu.Focus();
         }
 
         /// <summary>
@@ -380,6 +438,26 @@ namespace LordAshes
         public bool isBoardLoaded()
         {
             return CameraController.HasInstance && BoardSessionManager.HasInstance && !BoardSessionManager.IsLoading;
+        }
+
+        /// <summary>
+        /// Method to scale 64x64 icons to 32x32
+        /// </summary>
+        /// <param name="src">Texture2D that is 64x64</param>
+        /// <returns>Tetxure2D that is 32x32</returns>
+        public Texture2D Scale64To32(Texture2D src)
+        {
+            Texture2D tex = new Texture2D(32, 32);
+            for(int y=0; y<32; y++)
+            {
+                for(int x=0; x<32; x++)
+                {
+                    Color c = src.GetPixel(x * 2, y * 2);
+                    tex.SetPixel(x,y,c);
+                }
+            }
+            tex.Apply();
+            return tex;
         }
     }
 }
