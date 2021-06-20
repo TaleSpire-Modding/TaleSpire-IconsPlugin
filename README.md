@@ -5,16 +5,20 @@ Icons are chosen from among multiple icons from a GUI menu.
 
 Demo: https://youtu.be/0XN0IkVIXL4
 
+![Preview](https://i.imgur.com/Pp9lMx2.png)
+
 ## Change Log
 
+1.2.3: Trying to get Thuderstore to display preview correctly
+1.2.2: Trying to get Thuderstore to display preview correctly
+1.2.1: Trying to get Thuderstore to display preview correctly
+1.2.0: Added access to icons from radial menu using the Info main menu option and then the icons sub-menu option
+1.2.0: Keyboard access uses full size line menu for icon selection. Radial menu uses radial sub-menu
+1.1.0: Icons now scale with creature size
 1.0.3: Fixed issue with moving the icons to a sub-folder
-
 1.0.2: Plugin now appears on the TaleSpire main page
-
 1.0.2: Moved icons to sub-folder to not conflict with Radial Menu icons
-
 1.0.1: Fixed dependency requirement
-
 1.0.0: Initial release
 
 ## Install
