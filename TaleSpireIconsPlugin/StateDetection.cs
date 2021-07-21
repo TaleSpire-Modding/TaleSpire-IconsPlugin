@@ -107,7 +107,7 @@ namespace LordAshes
                         if (loaded)
                         {
                             Debug.Log("Minis mesh test passed. Processing transformations...");
-                            StatMessaging.Reset();
+                            StatMessaging.Reset(IconsPlugin.Guid);
                             SystemMessage.DisplayInfoText("Please Be Patient...\r\nLoading Mini Icons");
                             stage = 2;
                         }
@@ -136,7 +136,7 @@ namespace LordAshes
                 else if (stage >= 0)
                 {
                     Debug.Log("Board Is Re-loading...");
-                    StatMessaging.Reset();
+                    StatMessaging.Reset(IconsPlugin.Guid);
                     stage = stageStart;
                 }
                 return (stage == 10);

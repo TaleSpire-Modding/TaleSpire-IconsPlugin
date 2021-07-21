@@ -9,18 +9,20 @@ using System.Windows.Forms;
 
 using BepInEx.Configuration;
 using System.Reflection;
+using System.Text.RegularExpressions;
 
 namespace LordAshes
 {
     [BepInPlugin(Guid, Name, Version)]
     [BepInDependency(LordAshes.StatMessaging.Guid)]
     [BepInDependency(RadialUI.RadialUIPlugin.Guid)]
+    [BepInDependency(LordAshes.FileAccessPlugin.Guid)]
     public partial class IconsPlugin : BaseUnityPlugin
     {
         // Plugin info
         public const string Name = "Icons Plug-In";
         public const string Guid = "org.lordashes.plugins.icons";
-        public const string Version = "1.2.0.0";
+        public const string Version = "1.3.0.0";
 
         // Configuration
         private ConfigEntry<KeyboardShortcut> triggerKey { get; set; }
@@ -70,15 +72,16 @@ namespace LordAshes
             RadialUI.RadialSubmenu.EnsureMainMenuItem(  RadialUI.RadialUIPlugin.Guid + ".Info",
                                                         RadialUI.RadialSubmenu.MenuType.character,
                                                         "Info",
-                                                        RadialUI.RadialSubmenu.GetIconFromFile(dir+"Images/Icons/Info.png")
+                                                        FileAccessPlugin.Image.LoadSprite("Icons/Info.png")
                                                      );
 
             // Add Icons sub menu item
             RadialUI.RadialSubmenu.CreateSubMenuItem(   RadialUI.RadialUIPlugin.Guid+".Info",
                                                         "Icons",
-                                                        RadialUI.RadialSubmenu.GetIconFromFile(dir + "Images/Icons/Icons.png"),
+                                                        FileAccessPlugin.Image.LoadSprite("Icons/Icons.png"),
                                                         SetRequest,
-                                                        false
+                                                        false,
+                                                        null
                                                     );
 
             // Subscribe to Stat Messages
@@ -194,19 +197,19 @@ namespace LordAshes
             // Create sub-menu
             MapMenu mapMenu = MapMenuManager.OpenMenu(mmi, MapMenu.MenuType.SUBROOT);
             // Populate sub-menu based on all items added by any plugins for the specific main menu entry
-            foreach (string iconFile in System.IO.Directory.EnumerateFiles(dir + "Images/Icons/" + IconsPlugin.Guid, "*.PNG"))
+            Regex regex = new Regex("Icons/" + IconsPlugin.Guid + @"/(.+)\.(P|p)(N|n)(G|g)");
+            foreach(String iconFile in FileAccessPlugin.File.Catalog())
             {
-                Texture2D tex = new Texture2D(64, 64);
-                tex.LoadImage(System.IO.File.ReadAllBytes(iconFile));
-                Sprite icon = Sprite.Create(Scale64To32(tex), new Rect(0, 0, 32, 32), new Vector2(0.5f, 0.5f));
-
-                mapMenu.AddItem(new MapMenu.ItemArgs()
+                if (regex.IsMatch(iconFile))
                 {
-                    Action = (_mmi,_obj)=> { ToggleIcon(cid, iconFile); },
-                    Icon = icon,
-                    Title = System.IO.Path.GetFileNameWithoutExtension(iconFile),
-                    CloseMenuOnActivate = true
-                });
+                    mapMenu.AddItem(new MapMenu.ItemArgs()
+                    {
+                        Action = (_mmi, _obj) => { ToggleIcon(cid, iconFile); },
+                        Icon = FileAccessPlugin.Image.LoadSprite(iconFile),
+                        Title = System.IO.Path.GetFileNameWithoutExtension(iconFile),
+                        CloseMenuOnActivate = true
+                    });
+                }
             }
         }
 
@@ -225,7 +228,6 @@ namespace LordAshes
         /// </summary>
         public void SetRequest(CreatureGuid cid)
         {
-            string[] icons = System.IO.Directory.EnumerateFiles(dir + "Images/Icons/" + IconsPlugin.Guid, "*.PNG").ToArray();
             Form menu = new Form();
             menu.SuspendLayout();
             menu.FormBorderStyle = FormBorderStyle.None;
@@ -236,21 +238,27 @@ namespace LordAshes
             menu.AllowTransparency = true;
             menu.TransparencyKey = System.Drawing.Color.CornflowerBlue;
             menu.BackColor = System.Drawing.Color.CornflowerBlue;
-            menu.Width = 70 * icons.Length;
-            menu.Height = 100;
             int offset = 0;
-            foreach (string icon in icons)
+            int iconsCount = 0;
+            Regex regex = new Regex("Icons/" + IconsPlugin.Guid + @"/(.+)\.(P|p)(N|n)(G|g)");
+            foreach (String icon in FileAccessPlugin.File.Catalog())
             {
-                string iconFile = icon;
-                PictureBox iconImage = new PictureBox();
-                iconImage.SizeMode = PictureBoxSizeMode.AutoSize;
-                iconImage.Load(icon);
-                iconImage.Top = 5;
-                iconImage.Left = offset;
-                iconImage.Click += (s, e) => { menu.Close(); SyncIconList(cid, iconFile); };
-                menu.Controls.Add(iconImage);
-                offset = offset + 70;
+                if (regex.IsMatch(icon))
+                {
+                    iconsCount++;
+                    string iconFile = icon;
+                    PictureBox iconImage = new PictureBox();
+                    iconImage.SizeMode = PictureBoxSizeMode.AutoSize;
+                    iconImage.Load(icon);
+                    iconImage.Top = 5;
+                    iconImage.Left = offset;
+                    iconImage.Click += (s, e) => { menu.Close(); SyncIconList(cid, iconFile); };
+                    menu.Controls.Add(iconImage);
+                    offset = offset + 70;
+                }
             }
+            menu.Width = 70 * iconsCount;
+            menu.Height = 100;
             menu.ResumeLayout();
             menu.StartPosition = FormStartPosition.CenterScreen;
             menu.Show();
@@ -401,7 +409,7 @@ namespace LordAshes
                     Image img = icon[i].AddComponent<Image>();
                     img.transform.SetParent(canvas.transform);
                     // Load icon image
-                    icon[i].GetComponent<Image>().sprite = Sprite.Create(LoadTexture(dir+"Images/Icons/"+IconsPlugin.Guid+"/"+iconFiles[i]+".PNG"), new Rect(0, 0, 64, 64), new Vector2(0.5f, 0.5f), 100);
+                    icon[i].GetComponent<Image>().sprite = FileAccessPlugin.Image.LoadSprite("Icons/" + IconsPlugin.Guid + "/" + iconFiles[i] + ".PNG");
                     // Set scale
                     icon[i].GetComponent<Image>().transform.localScale = new Vector3(0.001f, 0.001f, 0.001f);
                     icon[i].SetActive(true);
@@ -413,51 +421,12 @@ namespace LordAshes
         }
 
         /// <summary>
-        /// Method to load a Texture2D from a file
-        /// </summary>
-        /// <param name="FilePath"></param>
-        /// <returns></returns>
-        public Texture2D LoadTexture(string FilePath)
-        {
-            Texture2D Tex2D;
-            byte[] FileData;
-
-            if (System.IO.File.Exists(FilePath))
-            {
-                FileData = System.IO.File.ReadAllBytes(FilePath);
-                Tex2D = new Texture2D(2, 2);
-                if (Tex2D.LoadImage(FileData)) return Tex2D;             
-            }
-            return null;                     
-        }
-
-        /// <summary>
         /// Function to check if the board is loaded
         /// </summary>
         /// <returns></returns>
         public bool isBoardLoaded()
         {
             return CameraController.HasInstance && BoardSessionManager.HasInstance && !BoardSessionManager.IsLoading;
-        }
-
-        /// <summary>
-        /// Method to scale 64x64 icons to 32x32
-        /// </summary>
-        /// <param name="src">Texture2D that is 64x64</param>
-        /// <returns>Tetxure2D that is 32x32</returns>
-        public Texture2D Scale64To32(Texture2D src)
-        {
-            Texture2D tex = new Texture2D(32, 32);
-            for(int y=0; y<32; y++)
-            {
-                for(int x=0; x<32; x++)
-                {
-                    Color c = src.GetPixel(x * 2, y * 2);
-                    tex.SetPixel(x,y,c);
-                }
-            }
-            tex.Apply();
-            return tex;
         }
     }
 }
