@@ -9,28 +9,44 @@ Demo: https://youtu.be/0XN0IkVIXL4
 
 ## Change Log
 
+1.4.0: Corrected compatibility after TS update
+
+1.3.1: Corrected ThunderStore dependencies (no plugin change)
+
+1.3.0: Uses FileAccessPlugin so that icons do not need to be moved to the TaleSpire_CustomData folder anymore
+
 1.2.3: Trying to get Thuderstore to display preview correctly
+
 1.2.2: Trying to get Thuderstore to display preview correctly
+
 1.2.1: Trying to get Thuderstore to display preview correctly
+
 1.2.0: Added access to icons from radial menu using the Info main menu option and then the icons sub-menu option
+
 1.2.0: Keyboard access uses full size line menu for icon selection. Radial menu uses radial sub-menu
+
 1.1.0: Icons now scale with creature size
+
 1.0.3: Fixed issue with moving the icons to a sub-folder
+
 1.0.2: Plugin now appears on the TaleSpire main page
+
 1.0.2: Moved icons to sub-folder to not conflict with Radial Menu icons
+
 1.0.1: Fixed dependency requirement
+
 1.0.0: Initial release
 
 ## Install
 
-Install using R2ModMan or similar. To install the accompanying icons, move the TaleSpire_CustomData folder (including all sub-folder)
-to your TaleSpire game directory. If the folder already exists, merge the contents. 
+Install using R2ModMan or similar.
 
 ## Usage
 
-Press the shortcut key to activate the Ioncs menu (Left CTRL + I by default but can be changed in R2ModMan). This brings up the Icons
-menu in the middle of the screen. Click an icon to toggle it. If that icon is not already present on the base, it will be added. If the
-icon was already present on the base, it will be removed.
+Press the shortcut key to activate the Ioncs menu (Left CTRL + I by default but can be changed in R2ModMan) or use Info | Icons Radial
+Menu selection. This brings up the Icons menu in the middle of the screen or as a circle if using the Radial UI.
+Click an icon to toggle it. If that icon is not already present on the base, it will be added. If the icon was already present on the
+base, it will be removed.
 
 ### Automatic Rotation
 
