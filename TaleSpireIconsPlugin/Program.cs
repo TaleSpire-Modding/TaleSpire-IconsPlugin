@@ -22,7 +22,7 @@ namespace LordAshes
         // Plugin info
         public const string Name = "Icons Plug-In";
         public const string Guid = "org.lordashes.plugins.icons";
-        public const string Version = "1.3.0.0";
+        public const string Version = "1.4.0.0";
 
         // Configuration
         private ConfigEntry<KeyboardShortcut> triggerKey { get; set; }
@@ -69,20 +69,27 @@ namespace LordAshes
             };
 
             // Add Info menu selection to main character menu
-            RadialUI.RadialSubmenu.EnsureMainMenuItem(  RadialUI.RadialUIPlugin.Guid + ".Info",
+            RadialUI.RadialSubmenu.EnsureMainMenuItem(  RadialUI.RadialUIPlugin.Guid + ".Icons",
                                                         RadialUI.RadialSubmenu.MenuType.character,
                                                         "Info",
-                                                        FileAccessPlugin.Image.LoadSprite("Icons/Info.png")
+                                                        FileAccessPlugin.Image.LoadSprite("Icons/Icons.png")
                                                      );
 
             // Add Icons sub menu item
-            RadialUI.RadialSubmenu.CreateSubMenuItem(   RadialUI.RadialUIPlugin.Guid+".Info",
-                                                        "Icons",
-                                                        FileAccessPlugin.Image.LoadSprite("Icons/Icons.png"),
-                                                        SetRequest,
-                                                        false,
-                                                        null
-                                                    );
+            Regex regex = new Regex("Icons/" + IconsPlugin.Guid + @"/(.+)\.(P|p)(N|n)(G|g)");
+            foreach (String iconFile in FileAccessPlugin.File.Catalog())
+            {
+                if (regex.IsMatch(iconFile))
+                {
+                    RadialUI.RadialSubmenu.CreateSubMenuItem(RadialUI.RadialUIPlugin.Guid + ".Icons",
+                                                                System.IO.Path.GetFileNameWithoutExtension(iconFile),
+                                                                FileAccessPlugin.Image.LoadSprite(iconFile),
+                                                                (a,b,c)=> { ToggleIcon(a,b,c,iconFile); },
+                                                                true,
+                                                                null
+                                                            );
+                }
+            }
 
             // Subscribe to Stat Messages
             StatMessaging.Subscribe(IconsPlugin.Guid, HandleRequest);
@@ -187,38 +194,11 @@ namespace LordAshes
         }
 
         /// <summary>
-        /// Callback method called from sub-menu selection
-        /// </summary>
-        /// <param name="cid">Creature Guid associated with radial menu asset</param>
-        /// <param name="menu">Menu Guid</param>
-        /// <param name="mmi">MapMenuItem associated with the menu</param>
-        private void SetRequest(CreatureGuid cid, string menu, MapMenuItem mmi)
-        {
-            // Create sub-menu
-            MapMenu mapMenu = MapMenuManager.OpenMenu(mmi, MapMenu.MenuType.SUBROOT);
-            // Populate sub-menu based on all items added by any plugins for the specific main menu entry
-            Regex regex = new Regex("Icons/" + IconsPlugin.Guid + @"/(.+)\.(P|p)(N|n)(G|g)");
-            foreach(String iconFile in FileAccessPlugin.File.Catalog())
-            {
-                if (regex.IsMatch(iconFile))
-                {
-                    mapMenu.AddItem(new MapMenu.ItemArgs()
-                    {
-                        Action = (_mmi, _obj) => { ToggleIcon(cid, iconFile); },
-                        Icon = FileAccessPlugin.Image.LoadSprite(iconFile),
-                        Title = System.IO.Path.GetFileNameWithoutExtension(iconFile),
-                        CloseMenuOnActivate = true
-                    });
-                }
-            }
-        }
-
-        /// <summary>
         /// Method for applying icon toggle from sub-menu
         /// </summary>
         /// <param name="cid"></param>
         /// <param name="iconFile"></param>
-        private void ToggleIcon(CreatureGuid cid, string iconFile)
+        private void ToggleIcon(CreatureGuid cid, string arg, MapMenuItem mmi, string iconFile)
         {
             SyncIconList(cid, iconFile);
         }
@@ -249,7 +229,7 @@ namespace LordAshes
                     string iconFile = icon;
                     PictureBox iconImage = new PictureBox();
                     iconImage.SizeMode = PictureBoxSizeMode.AutoSize;
-                    iconImage.Load(icon);
+                    iconImage.Load(FileAccessPlugin.File.Find(icon)[0]);
                     iconImage.Top = 5;
                     iconImage.Left = offset;
                     iconImage.Click += (s, e) => { menu.Close(); SyncIconList(cid, iconFile); };
