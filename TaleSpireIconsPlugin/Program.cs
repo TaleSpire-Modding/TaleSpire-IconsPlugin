@@ -22,7 +22,7 @@ namespace LordAshes
         // Plugin info
         public const string Name = "Icons Plug-In";
         public const string Guid = "org.lordashes.plugins.icons";
-        public const string Version = "1.4.0.0";
+        public const string Version = "1.5.0.0";
 
         // Configuration
         private ConfigEntry<KeyboardShortcut> triggerKey { get; set; }
@@ -71,7 +71,7 @@ namespace LordAshes
             // Add Info menu selection to main character menu
             RadialUI.RadialSubmenu.EnsureMainMenuItem(  RadialUI.RadialUIPlugin.Guid + ".Icons",
                                                         RadialUI.RadialSubmenu.MenuType.character,
-                                                        "Info",
+                                                        "Icons",
                                                         FileAccessPlugin.Image.LoadSprite("Icons/Icons.png")
                                                      );
 
@@ -86,7 +86,7 @@ namespace LordAshes
                                                                 FileAccessPlugin.Image.LoadSprite(iconFile),
                                                                 (a,b,c)=> { ToggleIcon(a,b,c,iconFile); },
                                                                 true,
-                                                                null
+                                                                () => { return LocalClient.HasControlOfCreature(new CreatureGuid(RadialUI.RadialUIPlugin.GetLastRadialTargetCreature())); }
                                                             );
                 }
             }
@@ -278,8 +278,12 @@ namespace LordAshes
         /// <param name="cid">Creature id of the mini to be syned</param>
         private void SyncBaseWithIcons(CreatureGuid cid)
         {
+            if (cid == null) { return; }
+            if (cid == CreatureGuid.Empty) { return; }
+
             CreatureBoardAsset asset;
             CreaturePresenter.TryGetAsset(cid, out asset);
+            if (asset == null) { return; }
             icon0 = GameObject.Find("StateIcon0:" + cid);
             icon1 = GameObject.Find("StateIcon1:" + cid);
             icon2 = GameObject.Find("StateIcon2:" + cid);
@@ -393,6 +397,7 @@ namespace LordAshes
                     // Set scale
                     icon[i].GetComponent<Image>().transform.localScale = new Vector3(0.001f, 0.001f, 0.001f);
                     icon[i].SetActive(true);
+                    icon[i].transform.SetParent(parent.transform);
                 }
 
                 Debug.Log("Updating Creature '" + cid + "' Icons Position");
