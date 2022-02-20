@@ -7,34 +7,29 @@ Demo: https://youtu.be/0XN0IkVIXL4
 
 ![Preview](https://i.imgur.com/Pp9lMx2.png)
 
+This plugin, like all others, is free but if you want to donate, use: http://LordAshes.ca/TalespireDonate/Donate.php
+
 ## Change Log
 
+1.6.0: Fixed bug with icons in fly mode
+1.6.0: Fixed bug with disabled icon packs
+1.6.0: Improved sizing for larger base creatures
+1.6.0: Improved startup
+1.5.0: Icons are deleted when mini is deleted
+1.5.0: Icons are available to GM and owner only
 1.4.0: Corrected compatibility after TS update
-
 1.3.1: Corrected ThunderStore dependencies (no plugin change)
-
 1.3.0: Uses FileAccessPlugin so that icons do not need to be moved to the TaleSpire_CustomData folder anymore
-
 1.2.3: Trying to get Thuderstore to display preview correctly
-
 1.2.2: Trying to get Thuderstore to display preview correctly
-
 1.2.1: Trying to get Thuderstore to display preview correctly
-
 1.2.0: Added access to icons from radial menu using the Info main menu option and then the icons sub-menu option
-
 1.2.0: Keyboard access uses full size line menu for icon selection. Radial menu uses radial sub-menu
-
 1.1.0: Icons now scale with creature size
-
 1.0.3: Fixed issue with moving the icons to a sub-folder
-
 1.0.2: Plugin now appears on the TaleSpire main page
-
 1.0.2: Moved icons to sub-folder to not conflict with Radial Menu icons
-
 1.0.1: Fixed dependency requirement
-
 1.0.0: Initial release
 
 ## Install
