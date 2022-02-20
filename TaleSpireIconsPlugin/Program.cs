@@ -10,6 +10,8 @@ using System.Windows.Forms;
 using BepInEx.Configuration;
 using System.Reflection;
 using System.Text.RegularExpressions;
+using System.Collections;
+using Newtonsoft.Json;
 
 namespace LordAshes
 {
@@ -22,10 +24,10 @@ namespace LordAshes
         // Plugin info
         public const string Name = "Icons Plug-In";
         public const string Guid = "org.lordashes.plugins.icons";
-        public const string Version = "1.5.0.0";
+        public const string Version = "1.6.0.0";
 
         // Configuration
-        private ConfigEntry<KeyboardShortcut> triggerKey { get; set; }
+        private ConfigEntry<KeyboardShortcut> triggerIconsMenu { get; set; }
         private ConfigEntry<bool> performanceHigh { get; set; }
 
         // Content directory
@@ -34,15 +36,16 @@ namespace LordAshes
         // Data Change Handlers
         private List<CreatureGuid> iconifiedAssets = new List<CreatureGuid>();
 
-
-        // Active board
-        private bool boardActive = false;
-
         // CreatureMoveBoardTool reference for determining drops
         private BindingFlags flags = BindingFlags.Public | BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Static;
 
         // Selected item
         private CreatureGuid heldMini = CreatureGuid.Empty;
+
+        // Subscription
+        private static float delayIconProcessing = 3.0f;
+        private static BoardState boardReady = BoardState.boardNotReady;
+        private List<StatMessaging.Change> backlog = new List<StatMessaging.Change>();
 
         // Variables used by the synchronization function. Exposed here so that the function does not constantly allocate and deallocate memory
         GameObject icon0;
@@ -52,6 +55,13 @@ namespace LordAshes
         Vector3 offset1;
         Vector3 offset2;
 
+        public enum BoardState
+        {
+            boardNotReady = 0,
+            boardIconsBuildDelay = 1,
+            boardReady = 2
+        }
+
         /// <summary>
         /// Function for initializing plugin
         /// This function is called once by TaleSpire
@@ -60,13 +70,9 @@ namespace LordAshes
         {
             UnityEngine.Debug.Log("Lord Ashes Icons Plugin Active.");
 
-            triggerKey = Config.Bind("Hotkeys", "Icons Toggle Menu", new KeyboardShortcut(KeyCode.I, KeyCode.LeftControl));
-            performanceHigh = Config.Bind("Settings", "Use High Performance (uses higher CPU load)", false);
-
-            BoardSessionManager.OnStateChange += (s) =>
-            {
-                if (s.ToString().Contains("+Active")) {  boardActive = true;  }  else { boardActive = false;  }
-            };
+            triggerIconsMenu = Config.Bind("Hotkeys", "Icons Toggle Menu", new KeyboardShortcut(KeyCode.I, KeyCode.LeftControl));
+            performanceHigh = Config.Bind("Settings", "Use High Performance (uses higher CPU load)", true);
+            delayIconProcessing = Config.Bind("Setting", "Delay Icon Processing On Startup", 3.0f).Value;
 
             // Add Info menu selection to main character menu
             RadialUI.RadialSubmenu.EnsureMainMenuItem(  RadialUI.RadialUIPlugin.Guid + ".Icons",
@@ -76,7 +82,7 @@ namespace LordAshes
                                                      );
 
             // Add Icons sub menu item
-            Regex regex = new Regex("Icons/" + IconsPlugin.Guid + @"/(.+)\.(P|p)(N|n)(G|g)");
+            Regex regex = new Regex("Icons/" + IconsPlugin.Guid + @"/(.+)\.(P|p)(N|n)(G|g)$");
             foreach (String iconFile in FileAccessPlugin.File.Catalog())
             {
                 if (regex.IsMatch(iconFile))
@@ -91,11 +97,10 @@ namespace LordAshes
                 }
             }
 
-            // Subscribe to Stat Messages
             StatMessaging.Subscribe(IconsPlugin.Guid, HandleRequest);
 
             // Display plugin on the main TaleSpire page
-            StateDetection.Initialize(this.GetType());
+            Utility.PostOnMainPage(this.GetType());
         }
 
         /// <summary>
@@ -104,12 +109,19 @@ namespace LordAshes
         /// </summary>
         void Update()
         {
-            if (boardActive && StateDetection.Ready())
+            if (Utility.isBoardLoaded())
             {
+                if(boardReady==BoardState.boardNotReady)
+                {
+                    boardReady = BoardState.boardIconsBuildDelay;
+                    Debug.Log("Icons Plugin: Board Loaded Delaying Message Processing To Allow Minis To Load");
+                    StartCoroutine("DelayIconProcessing", new object[] { delayIconProcessing });
+                }
+
                 CreatureBoardAsset asset = null;
 
                 // Check for states menu trigger
-                if (triggerKey.Value.IsUp())
+                if (Utility.StrictKeyCheck(triggerIconsMenu.Value))
                 {
                     SetRequest(LocalClient.SelectedCreatureId);
                 }
@@ -144,9 +156,17 @@ namespace LordAshes
                 }
                 else if(heldMini != CreatureGuid.Empty)
                 {
-                    Debug.Log("Drop Event For '" + heldMini + "'...");
+                    Debug.Log("Icons Plugin: Drop Event For '" + heldMini + "'...");
                     StatMessaging.SetInfo(heldMini, IconsPlugin.Guid + ".Update", DateTime.UtcNow.ToString());
                     heldMini = CreatureGuid.Empty;
+                }
+            }
+            else
+            {
+                if (boardReady != BoardState.boardNotReady)
+                {
+                    Debug.Log("Icons Plugin: Board Unloaded");
+                    boardReady = BoardState.boardNotReady;
                 }
             }
         }
@@ -157,38 +177,46 @@ namespace LordAshes
         /// <param name="changes">Change parameter with the Stat Message content information</param>
         public void HandleRequest(StatMessaging.Change[] changes)
         {
-            foreach (StatMessaging.Change change in changes)
+            if (boardReady < BoardState.boardReady)
             {
-                if (change.key == IconsPlugin.Guid)
+                Debug.Log("Icons Plugin: Adding Request To Backlog");
+                backlog.AddRange(changes);
+            }
+            else
+            {
+                foreach (StatMessaging.Change change in changes)
                 {
-                    // Update the icons on the specified mini
-                    try
+                    if (change.key == IconsPlugin.Guid)
                     {
-                        string iconList = StatMessaging.ReadInfo(change.cid, IconsPlugin.Guid);
-                        Debug.Log("Icons for Creature '"+change.cid+"' have changed to '" + iconList + "'");
-                        if (iconList != "")
+                        // Update the icons on the specified mini
+                        try
                         {
-                            // [a][b][c]
-                            iconList = iconList.Substring(1);
-                            iconList = iconList.Substring(0, iconList.Length - 1);
-                            string[] icons = iconList.Split(new string[] { "][" }, StringSplitOptions.RemoveEmptyEntries);
-                            DisplayIcons(change.cid, icons);
+                            string iconList = StatMessaging.ReadInfo(change.cid, IconsPlugin.Guid);
+                            Debug.Log("Icons Plugin: Icons for Creature '" + change.cid + "' have changed to '" + iconList + "'");
+                            if (iconList != "")
+                            {
+                                // [a][b][c]
+                                iconList = iconList.Substring(1);
+                                iconList = iconList.Substring(0, iconList.Length - 1);
+                                string[] icons = iconList.Split(new string[] { "][" }, StringSplitOptions.RemoveEmptyEntries);
+                                DisplayIcons(change.cid, icons);
+                            }
+                            else
+                            {
+                                DisplayIcons(change.cid, new string[] { });
+                            }
                         }
-                        else
-                        {
-                            DisplayIcons(change.cid, new string[] { });
-                        }
+                        catch (Exception) {; }
                     }
-                    catch (Exception) {; }
-                }
-                else if (change.key == IconsPlugin.Guid+".Update")
-                {
-                    // Synchronized position of icons with respect to the specified mini
-                    try
+                    else if (change.key == IconsPlugin.Guid + ".Update")
                     {
-                        SyncBaseWithIcons(change.cid);
+                        // Synchronized position of icons with respect to the specified mini
+                        try
+                        {
+                            SyncBaseWithIcons(change.cid);
+                        }
+                        catch (Exception) {; }
                     }
-                    catch(Exception) {; }
                 }
             }
         }
@@ -220,7 +248,7 @@ namespace LordAshes
             menu.BackColor = System.Drawing.Color.CornflowerBlue;
             int offset = 0;
             int iconsCount = 0;
-            Regex regex = new Regex("Icons/" + IconsPlugin.Guid + @"/(.+)\.(P|p)(N|n)(G|g)");
+            Regex regex = new Regex("Icons/" + IconsPlugin.Guid + @"/(.+)\.(P|p)(N|n)(G|g)$");
             foreach (String icon in FileAccessPlugin.File.Catalog())
             {
                 if (regex.IsMatch(icon))
@@ -291,7 +319,7 @@ namespace LordAshes
             // Check for Stealth mode entry
             if (asset.Creature.IsExplicitlyHidden && icon0!=null)
             {
-                Debug.Log("Stealth Mode Entered: Hiding Icons");
+                Debug.Log("Icons Plugin: Stealth Mode Entered: Hiding Icons");
                 GameObject.Destroy(GameObject.Find("StateIcon0:" + cid));
                 GameObject.Destroy(GameObject.Find("StateIcon1:" + cid));
                 GameObject.Destroy(GameObject.Find("StateIcon2:" + cid));
@@ -299,7 +327,7 @@ namespace LordAshes
             // Check for Stealth mode exit
             else if (!asset.Creature.IsExplicitlyHidden && icon0==null)
             {
-                Debug.Log("Stealth Mode Exited: Revealing Icons");
+                Debug.Log("Icons Plugin: Stealth Mode Exited: Revealing Icons");
                 string iconList = StatMessaging.ReadInfo(cid, IconsPlugin.Guid);
                 // [a][b][c]
                 iconList = iconList.Substring(1);
@@ -311,24 +339,27 @@ namespace LordAshes
             // Don't sync icon when in stealth mode
             if (asset.Creature.IsExplicitlyHidden) { return; }
 
-            Vector3 scale = new Vector3(asset.Creature.Scale / 1000, asset.Creature.Scale / 1000, asset.Creature.Scale / 1000);
+            Vector3 scale = new Vector3((float)Math.Sqrt(asset.Creature.Scale) / 1000f, (float)Math.Sqrt(asset.Creature.Scale) / 1000f, (float)Math.Sqrt(asset.Creature.Scale) / 1000f);
+
+            // Get reference to base
+            Transform baseTransform = asset.CreatureRoot; // asset.BaseLoader.LoadedAsset;
 
             // Sync icons with base
             if ((icon0 != null) && (icon1 == null) && (icon2 == null))
             {
-                offset0 = Quaternion.AngleAxis(Camera.main.transform.eulerAngles.y, Vector3.up) * new Vector3(0, 0.05f, -0.45f) * asset.Creature.Scale;
-                icon0.transform.position = offset0 + asset.BaseLoader.LoadedAsset.transform.position;
+                offset0 = Quaternion.AngleAxis(Camera.main.transform.eulerAngles.y, Vector3.up) * new Vector3(0, 0.05f * (float)Math.Sqrt(asset.Creature.Scale), -0.45f) * asset.Creature.Scale;
+                icon0.transform.position = offset0 + baseTransform.position;
                 icon0.transform.eulerAngles = new Vector3(20, Camera.main.transform.eulerAngles.y, 0);
                 icon0.transform.localScale = scale;
                 icon0.SetActive(!asset.Creature.IsExplicitlyHidden);
             }
             else if ((icon0 != null) && (icon1 != null) && (icon2 == null))
             {
-                offset0 = Quaternion.AngleAxis(Camera.main.transform.eulerAngles.y, Vector3.up) * new Vector3(0.125f, 0.05f, -0.425f) * asset.Creature.Scale;
-                offset1 = Quaternion.AngleAxis(Camera.main.transform.eulerAngles.y, Vector3.up) * new Vector3(-0.125f, 0.05f, -0.425f) * asset.Creature.Scale;
-                icon0.transform.position = offset0 + asset.BaseLoader.LoadedAsset.transform.position;
+                offset0 = Quaternion.AngleAxis(Camera.main.transform.eulerAngles.y, Vector3.up) * new Vector3(0.125f, 0.05f * (float)Math.Sqrt(asset.Creature.Scale), -0.425f) * asset.Creature.Scale;
+                offset1 = Quaternion.AngleAxis(Camera.main.transform.eulerAngles.y, Vector3.up) * new Vector3(-0.125f, 0.05f * (float)Math.Sqrt(asset.Creature.Scale), -0.425f) * asset.Creature.Scale;
+                icon0.transform.position = offset0 + baseTransform.position;
                 icon0.transform.eulerAngles = new Vector3(20, Camera.main.transform.eulerAngles.y - 20, 0);
-                icon1.transform.position = offset1 + asset.BaseLoader.LoadedAsset.transform.position;
+                icon1.transform.position = offset1 + baseTransform.position;
                 icon1.transform.eulerAngles = new Vector3(20, Camera.main.transform.eulerAngles.y + 20, 0);
                 icon0.transform.localScale = scale;
                 icon1.transform.localScale = scale;
@@ -337,14 +368,14 @@ namespace LordAshes
             }
             else
             {
-                offset0 = Quaternion.AngleAxis(Camera.main.transform.eulerAngles.y, Vector3.up) * new Vector3(+0.125f, +0.05f, -0.425f) * asset.Creature.Scale;
-                offset1 = Quaternion.AngleAxis(Camera.main.transform.eulerAngles.y, Vector3.up) * new Vector3(0, 0.05f, -0.45f) * asset.Creature.Scale;
-                offset2 = Quaternion.AngleAxis(Camera.main.transform.eulerAngles.y, Vector3.up) * new Vector3(-0.125f, +0.05f, -0.425f) * asset.Creature.Scale;
-                icon0.transform.position = offset0 + asset.BaseLoader.LoadedAsset.transform.position;
+                offset0 = Quaternion.AngleAxis(Camera.main.transform.eulerAngles.y, Vector3.up) * new Vector3(+0.125f, +0.05f * (float)Math.Sqrt(asset.Creature.Scale), -0.425f) * asset.Creature.Scale;
+                offset1 = Quaternion.AngleAxis(Camera.main.transform.eulerAngles.y, Vector3.up) * new Vector3(0, 0.05f * (float)Math.Sqrt(asset.Creature.Scale), -0.45f) * asset.Creature.Scale;
+                offset2 = Quaternion.AngleAxis(Camera.main.transform.eulerAngles.y, Vector3.up) * new Vector3(-0.125f, +0.05f * (float)Math.Sqrt(asset.Creature.Scale), -0.425f) * asset.Creature.Scale;
+                icon0.transform.position = offset0 + baseTransform.position;
                 icon0.transform.eulerAngles = new Vector3(20, Camera.main.transform.eulerAngles.y - 20, 0);
-                icon1.transform.position = offset1 + asset.BaseLoader.LoadedAsset.transform.position;
+                icon1.transform.position = offset1 + baseTransform.position;
                 icon1.transform.eulerAngles = new Vector3(20, Camera.main.transform.eulerAngles.y, 0);
-                icon2.transform.position = offset2 + asset.BaseLoader.LoadedAsset.transform.position;
+                icon2.transform.position = offset2 + baseTransform.position;
                 icon2.transform.eulerAngles = new Vector3(20, Camera.main.transform.eulerAngles.y + 20, 0);
                 icon0.transform.localScale = scale;
                 icon1.transform.localScale = scale;
@@ -360,15 +391,15 @@ namespace LordAshes
         /// Game objects are automatically created when needed and destroyed when not needed.
         /// </summary>
         /// <param name="cid">Creature guid for the creature to display icons</param>
-        /// <param name="iconFiles">String representing the icons to be displayed wrappedn in square brackets</param>
+        /// <param name="iconFiles">String representing the icons to be displayed wrapped in square brackets</param>
         private void DisplayIcons(CreatureGuid cid, string[] iconFiles)
         {
-            Debug.Log("Updating Creature '" + cid + "' Icons");
+            Debug.Log("Icons Plugin: Updating Creature '" + cid + "' Icons");
             CreatureBoardAsset asset;
             CreaturePresenter.TryGetAsset(cid, out asset);
             iconifiedAssets.Remove(cid);
 
-            // Desatroy previou icons (if any)
+            // Destroy previou icons (if any)
             GameObject.Destroy(GameObject.Find("StateIcon0:" + cid));
             GameObject.Destroy(GameObject.Find("StateIcon1:" + cid));
             GameObject.Destroy(GameObject.Find("StateIcon2:" + cid));
@@ -377,7 +408,8 @@ namespace LordAshes
             if (iconFiles.Length == 0) { return; }
 
             // Get parent object to which the icons will be attached
-            AssetLoader parent = asset.BaseLoader;
+            // AssetLoader parent = asset.BaseLoader;
+            Transform parentTransform = asset.CreatureRoot;
             iconifiedAssets.Add(cid);
 
             if (asset!=null)
@@ -397,21 +429,22 @@ namespace LordAshes
                     // Set scale
                     icon[i].GetComponent<Image>().transform.localScale = new Vector3(0.001f, 0.001f, 0.001f);
                     icon[i].SetActive(true);
-                    icon[i].transform.SetParent(parent.transform);
+                    icon[i].transform.SetParent(parentTransform);
                 }
 
-                Debug.Log("Updating Creature '" + cid + "' Icons Position");
+                Debug.Log("Icons Plugin: Updating Creature '" + cid + "' Icons Position");
                 SyncBaseWithIcons(cid);
             }
         }
 
-        /// <summary>
-        /// Function to check if the board is loaded
-        /// </summary>
-        /// <returns></returns>
-        public bool isBoardLoaded()
+        public IEnumerator DelayIconProcessing(object[] inputs)
         {
-            return CameraController.HasInstance && BoardSessionManager.HasInstance && !BoardSessionManager.IsLoading;
+            // Subscribe to Stat Messages
+            yield return new WaitForSeconds((float)inputs[0]);
+            boardReady = BoardState.boardReady;
+            Debug.Log("Icons Plugin: Processing Backlog");
+            HandleRequest(backlog.ToArray());
+            backlog.Clear();
         }
     }
 }
