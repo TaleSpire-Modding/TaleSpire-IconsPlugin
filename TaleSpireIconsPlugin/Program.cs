@@ -24,7 +24,7 @@ namespace LordAshes
         // Plugin info
         public const string Name = "Icons Plug-In";
         public const string Guid = "org.lordashes.plugins.icons";
-        public const string Version = "1.6.0.0";
+        public const string Version = "2.0.0.0";
 
         // Configuration
         private ConfigEntry<KeyboardShortcut> triggerIconsMenu { get; set; }
@@ -68,7 +68,7 @@ namespace LordAshes
         /// </summary>
         void Awake()
         {
-            UnityEngine.Debug.Log("Lord Ashes Icons Plugin Active.");
+            UnityEngine.Debug.Log("Icons Plugin: "+GetType().AssemblyQualifiedName+" is Active.");
 
             triggerIconsMenu = Config.Bind("Hotkeys", "Icons Toggle Menu", new KeyboardShortcut(KeyCode.I, KeyCode.LeftControl));
             performanceHigh = Config.Bind("Settings", "Use High Performance (uses higher CPU load)", true);
@@ -85,14 +85,16 @@ namespace LordAshes
             Regex regex = new Regex("Icons/" + IconsPlugin.Guid + @"/(.+)\.(P|p)(N|n)(G|g)$");
             foreach (String iconFile in FileAccessPlugin.File.Catalog())
             {
+                Debug.Log("Icons Plugin: Comparing '"+iconFile+"' To Regex");
                 if (regex.IsMatch(iconFile))
                 {
+                    Debug.Log("Icons Plugin: Found Icons '"+iconFile+"'");
                     RadialUI.RadialSubmenu.CreateSubMenuItem(RadialUI.RadialUIPlugin.Guid + ".Icons",
                                                                 System.IO.Path.GetFileNameWithoutExtension(iconFile),
                                                                 FileAccessPlugin.Image.LoadSprite(iconFile),
                                                                 (a,b,c)=> { ToggleIcon(a,b,c,iconFile); },
                                                                 true,
-                                                                () => { return LocalClient.HasControlOfCreature(new CreatureGuid(RadialUI.RadialUIPlugin.GetLastRadialTargetCreature())); }
+                                                                () => { Debug.Log("Icons Plugin: Adding Icon '"+iconFile+"'");  return LocalClient.HasControlOfCreature(new CreatureGuid(RadialUI.RadialUIPlugin.GetLastRadialTargetCreature())); }
                                                             );
                 }
             }
@@ -152,7 +154,7 @@ namespace LordAshes
                 asset = (CreatureBoardAsset)typeof(CreatureMoveBoardTool).GetField("_pickupObject", flags).GetValue(moveBoard);
                 if (asset != null)
                 { 
-                    heldMini = asset.Creature.CreatureId;
+                    heldMini = asset.CreatureId;
                 }
                 else if(heldMini != CreatureGuid.Empty)
                 {
@@ -228,6 +230,7 @@ namespace LordAshes
         /// <param name="iconFile"></param>
         private void ToggleIcon(CreatureGuid cid, string arg, MapMenuItem mmi, string iconFile)
         {
+            Debug.Log("Icons Plugin: Toggling Icon ("+iconFile+") State On Creature "+cid);
             SyncIconList(cid, iconFile);
         }
 
@@ -317,7 +320,7 @@ namespace LordAshes
             icon2 = GameObject.Find("StateIcon2:" + cid);
 
             // Check for Stealth mode entry
-            if (asset.Creature.IsExplicitlyHidden && icon0!=null)
+            if (asset.IsExplicitlyHidden && icon0!=null)
             {
                 Debug.Log("Icons Plugin: Stealth Mode Entered: Hiding Icons");
                 GameObject.Destroy(GameObject.Find("StateIcon0:" + cid));
@@ -325,7 +328,7 @@ namespace LordAshes
                 GameObject.Destroy(GameObject.Find("StateIcon2:" + cid));
             }
             // Check for Stealth mode exit
-            else if (!asset.Creature.IsExplicitlyHidden && icon0==null)
+            else if (!asset.IsExplicitlyHidden && icon0==null)
             {
                 Debug.Log("Icons Plugin: Stealth Mode Exited: Revealing Icons");
                 string iconList = StatMessaging.ReadInfo(cid, IconsPlugin.Guid);
@@ -337,40 +340,40 @@ namespace LordAshes
             }
 
             // Don't sync icon when in stealth mode
-            if (asset.Creature.IsExplicitlyHidden) { return; }
+            if (asset.IsExplicitlyHidden) { return; }
 
-            Vector3 scale = new Vector3((float)Math.Sqrt(asset.Creature.Scale) / 1000f, (float)Math.Sqrt(asset.Creature.Scale) / 1000f, (float)Math.Sqrt(asset.Creature.Scale) / 1000f);
+            Vector3 scale = new Vector3((float)Math.Sqrt(asset.Scale) / 1000f, (float)Math.Sqrt(asset.Scale) / 1000f, (float)Math.Sqrt(asset.Scale) / 1000f);
 
             // Get reference to base
-            Transform baseTransform = asset.CreatureRoot; // asset.BaseLoader.LoadedAsset;
+            Transform baseTransform = Utility.GetBaseObject(asset.CreatureId).transform;
 
             // Sync icons with base
             if ((icon0 != null) && (icon1 == null) && (icon2 == null))
             {
-                offset0 = Quaternion.AngleAxis(Camera.main.transform.eulerAngles.y, Vector3.up) * new Vector3(0, 0.05f * (float)Math.Sqrt(asset.Creature.Scale), -0.45f) * asset.Creature.Scale;
+                offset0 = Quaternion.AngleAxis(Camera.main.transform.eulerAngles.y, Vector3.up) * new Vector3(0, 0.05f * (float)Math.Sqrt(asset.Scale), -0.45f) * asset.Scale;
                 icon0.transform.position = offset0 + baseTransform.position;
                 icon0.transform.eulerAngles = new Vector3(20, Camera.main.transform.eulerAngles.y, 0);
                 icon0.transform.localScale = scale;
-                icon0.SetActive(!asset.Creature.IsExplicitlyHidden);
+                icon0.SetActive(!asset.IsExplicitlyHidden);
             }
             else if ((icon0 != null) && (icon1 != null) && (icon2 == null))
             {
-                offset0 = Quaternion.AngleAxis(Camera.main.transform.eulerAngles.y, Vector3.up) * new Vector3(0.125f, 0.05f * (float)Math.Sqrt(asset.Creature.Scale), -0.425f) * asset.Creature.Scale;
-                offset1 = Quaternion.AngleAxis(Camera.main.transform.eulerAngles.y, Vector3.up) * new Vector3(-0.125f, 0.05f * (float)Math.Sqrt(asset.Creature.Scale), -0.425f) * asset.Creature.Scale;
+                offset0 = Quaternion.AngleAxis(Camera.main.transform.eulerAngles.y, Vector3.up) * new Vector3(0.125f, 0.05f * (float)Math.Sqrt(asset.Scale), -0.425f) * asset.Scale;
+                offset1 = Quaternion.AngleAxis(Camera.main.transform.eulerAngles.y, Vector3.up) * new Vector3(-0.125f, 0.05f * (float)Math.Sqrt(asset.Scale), -0.425f) * asset.Scale;
                 icon0.transform.position = offset0 + baseTransform.position;
                 icon0.transform.eulerAngles = new Vector3(20, Camera.main.transform.eulerAngles.y - 20, 0);
                 icon1.transform.position = offset1 + baseTransform.position;
                 icon1.transform.eulerAngles = new Vector3(20, Camera.main.transform.eulerAngles.y + 20, 0);
                 icon0.transform.localScale = scale;
                 icon1.transform.localScale = scale;
-                icon0.SetActive(!asset.Creature.IsExplicitlyHidden);
-                icon1.SetActive(!asset.Creature.IsExplicitlyHidden);
+                icon0.SetActive(!asset.IsExplicitlyHidden);
+                icon1.SetActive(!asset.IsExplicitlyHidden);
             }
             else
             {
-                offset0 = Quaternion.AngleAxis(Camera.main.transform.eulerAngles.y, Vector3.up) * new Vector3(+0.125f, +0.05f * (float)Math.Sqrt(asset.Creature.Scale), -0.425f) * asset.Creature.Scale;
-                offset1 = Quaternion.AngleAxis(Camera.main.transform.eulerAngles.y, Vector3.up) * new Vector3(0, 0.05f * (float)Math.Sqrt(asset.Creature.Scale), -0.45f) * asset.Creature.Scale;
-                offset2 = Quaternion.AngleAxis(Camera.main.transform.eulerAngles.y, Vector3.up) * new Vector3(-0.125f, +0.05f * (float)Math.Sqrt(asset.Creature.Scale), -0.425f) * asset.Creature.Scale;
+                offset0 = Quaternion.AngleAxis(Camera.main.transform.eulerAngles.y, Vector3.up) * new Vector3(+0.125f, +0.05f * (float)Math.Sqrt(asset.Scale), -0.425f) * asset.Scale;
+                offset1 = Quaternion.AngleAxis(Camera.main.transform.eulerAngles.y, Vector3.up) * new Vector3(0, 0.05f * (float)Math.Sqrt(asset.Scale), -0.45f) * asset.Scale;
+                offset2 = Quaternion.AngleAxis(Camera.main.transform.eulerAngles.y, Vector3.up) * new Vector3(-0.125f, +0.05f * (float)Math.Sqrt(asset.Scale), -0.425f) * asset.Scale;
                 icon0.transform.position = offset0 + baseTransform.position;
                 icon0.transform.eulerAngles = new Vector3(20, Camera.main.transform.eulerAngles.y - 20, 0);
                 icon1.transform.position = offset1 + baseTransform.position;
@@ -380,9 +383,9 @@ namespace LordAshes
                 icon0.transform.localScale = scale;
                 icon1.transform.localScale = scale;
                 icon2.transform.localScale = scale;
-                icon0.SetActive(!asset.Creature.IsExplicitlyHidden);
-                icon1.SetActive(!asset.Creature.IsExplicitlyHidden);
-                icon2.SetActive(!asset.Creature.IsExplicitlyHidden);
+                icon0.SetActive(!asset.IsExplicitlyHidden);
+                icon1.SetActive(!asset.IsExplicitlyHidden);
+                icon2.SetActive(!asset.IsExplicitlyHidden);
             }
         }
 
@@ -408,8 +411,7 @@ namespace LordAshes
             if (iconFiles.Length == 0) { return; }
 
             // Get parent object to which the icons will be attached
-            // AssetLoader parent = asset.BaseLoader;
-            Transform parentTransform = asset.CreatureRoot;
+            Transform parentTransform = Utility.GetBaseObject(asset.CreatureId).transform;
             iconifiedAssets.Add(cid);
 
             if (asset!=null)
