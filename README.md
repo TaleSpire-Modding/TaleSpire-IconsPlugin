@@ -11,6 +11,8 @@ This plugin, like all others, is free but if you want to donate, use: http://Lor
 
 ## Change Log
 
+```
+2.0.0: Fix after BR HF Integration update
 1.6.0: Fixed bug with icons in fly mode
 1.6.0: Fixed bug with disabled icon packs
 1.6.0: Improved sizing for larger base creatures
@@ -31,6 +33,7 @@ This plugin, like all others, is free but if you want to donate, use: http://Lor
 1.0.2: Moved icons to sub-folder to not conflict with Radial Menu icons
 1.0.1: Fixed dependency requirement
 1.0.0: Initial release
+```
 
 ## Install
 
