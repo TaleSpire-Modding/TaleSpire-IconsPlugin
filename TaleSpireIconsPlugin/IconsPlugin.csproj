@@ -36,6 +36,9 @@
     <StartupObject />
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="AssetDataPlugin">
+      <HintPath>..\..\TaleSpireAssetDataPlugin\Plugin\bin\Debug\AssetDataPlugin.dll</HintPath>
+    </Reference>
     <Reference Include="BepInEx">
       <HintPath>D:\moddingtalespire-2.3.0\bepinexbin\BepInEx\core\BepInEx.dll</HintPath>
     </Reference>
@@ -69,10 +72,6 @@
     <Reference Include="RadialUI, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\..\..\AppData\Roaming\r2modmanPlus-local\TaleSpire\profiles\Modded\BepInEx\plugins\HolloFox_TS-RadialUIPlugin\RadialUI.dll</HintPath>
-    </Reference>
-    <Reference Include="StatMessaging, Version=1.2.1.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\TaleSpireStatMessaging - 1.6.0\TaleSpireStatMessaging\bin\Debug\StatMessaging.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
