@@ -12,6 +12,11 @@ This plugin, like all others, is free but if you want to donate, use: http://Lor
 ## Change Log
 
 ```
+2.2.0: Added option for up to 12 icons above the head instead of a max 3 on the base
+2.1.1: Added diagnostic log level configuration to minimize log entries when not needed
+2.1.1: Improved board loading process
+2.1.0: Bugfix for icons in fly mode
+2.1.0: Reworked code to simplify it and use Asset Data Plugin instead of Stat Messaging
 2.0.0: Fix after BR HF Integration update
 1.6.0: Fixed bug with icons in fly mode
 1.6.0: Fixed bug with disabled icon packs
