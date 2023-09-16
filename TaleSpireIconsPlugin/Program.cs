@@ -4,15 +4,11 @@ using UnityEngine.UI;
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Windows.Forms;
 
 using BepInEx.Configuration;
 using System.Text.RegularExpressions;
 using System.Collections;
-using RadialUI.Extensions;
-using RadialUI;
-using System.Security.Cryptography;
 
 namespace LordAshes
 {
@@ -85,10 +81,15 @@ namespace LordAshes
             boardReady = 2
         }
 
-        /// <summary>
-        /// Function for initializing plugin
-        /// This function is called once by TaleSpire
-        /// </summary>
+        // Track if there was an angle change before doing anybase icon syncing
+        private float cameraY = 0;
+        private bool AngleChange()
+        {
+            if (cameraY == Camera.main.transform.eulerAngles.y) return false;
+            cameraY = Camera.main.transform.eulerAngles.y;
+            return true;
+        }
+
         void Awake()
         {
             diagnosticLevel = Config.Bind("Setting", "Diagnostic Details In Log", DiagnostiocLevel.low);
@@ -156,24 +157,28 @@ namespace LordAshes
                     ShowIconMenu(LocalClient.SelectedCreatureId);
                 }
 
-                // Sync icons for selected mini
-                if (!performanceHigh.Value)
+                // skip Sync Base Icons if no angle change
+                if (AngleChange())
                 {
-                    // Low Performance Mode - Sync Only Selected Mini
-                    if (LocalClient.SelectedCreatureId != null)
+                    // Sync icons for selected mini
+                    if (!performanceHigh.Value)
                     {
-                        if (iconifiedAssets.Contains(LocalClient.SelectedCreatureId))
+                        // Low Performance Mode - Sync Only Selected Mini
+                        if (LocalClient.SelectedCreatureId != null)
                         {
-                            SyncBaseWithIcons(LocalClient.SelectedCreatureId);
+                            if (iconifiedAssets.Contains(LocalClient.SelectedCreatureId))
+                            {
+                                SyncBaseWithIcons(LocalClient.SelectedCreatureId);
+                            }
                         }
                     }
-                }
-                else
-                {
-                    // High Performance Mode - Sync All Iconified Minis
-                    foreach (CreatureGuid mini in iconifiedAssets)
+                    else
                     {
-                        SyncBaseWithIcons(mini);
+                        // High Performance Mode - Sync All Iconified Minis
+                        foreach (CreatureGuid mini in iconifiedAssets)
+                        {
+                            SyncBaseWithIcons(mini);
+                        }
                     }
                 }
             }
